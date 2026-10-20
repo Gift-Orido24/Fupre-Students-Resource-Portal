@@ -1,0 +1,8 @@
+*.db
+*.sqlite
+*.log
+.env
+token.json
+credentials.json
+__pycache__/
+temp_uploads/
