@@ -305,6 +305,7 @@ h1, h2 { color: #2c3e50; }
     color: #7f8c8d;
 }
 .empty { margin: 22px 0 6px; color: #7f8c8d; }
+.recent-title { font-size: 18px; margin: 24px 0 4px; }
 input {
     flex: 1;
     padding: 10px;
@@ -468,6 +469,23 @@ PUBLIC_TEMPLATE = """
     <button type="submit">Search</button>
   </div>
 </form>
+{% if not query and recent_files %}
+<h2 class="recent-title">🆕 Recently added</h2>
+{% for file in recent_files %}
+<div class="file-card">
+  <div>
+    <h3 style="margin: 0 0 5px 0;">{{ file.title }}</h3>
+    <span class="badge">{{ file.subject }}</span>
+  </div>
+  <div>
+    {% if file.size %}
+      <span class="size">{{ file.size | human_size }}</span>
+    {% endif %}
+    <a href="/download/{{ file.id }}" class="btn-download">Download</a>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
 
 <div class="file-list">
 {% if query %}
@@ -621,6 +639,7 @@ def index():
 
     offset = (page - 1) * ITEMS_PER_PAGE
     files = []
+    recent_files = []
     total_items = 0
 
     # Only query the database if the user has typed a search query
@@ -643,12 +662,25 @@ def index():
             """, (f"%{query}%", f"%{query}%", ITEMS_PER_PAGE, offset)).fetchall()
         finally:
             conn.close()
+    else:
+        conn = get_db_connection()
+        try:
+            recent_files = conn.execute("""
+                SELECT * 
+                FROM files 
+                ORDER BY id DESC 
+                LIMIT 6
+        """).fetchall()
+        finally:
+            conn.close()
+
 
     total_pages = max(1, (total_items + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
 
     return render_template_string(
         PUBLIC_TEMPLATE,
         files=files,
+        recent_files=recent_files,
         query=query,
         page=page,
         total_pages=total_pages,
